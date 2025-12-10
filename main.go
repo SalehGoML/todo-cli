@@ -2,7 +2,10 @@ package main
 
 import (
 	"bufio"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -47,6 +50,9 @@ const (
 	ManDaravardiSerializationMode = "mandaravardi"
 	JsonSerializationMode         = "json"
 )
+var userFileToStore = fileStore {
+	filePath: useerStoragePath,
+}
 
 func main() {
 	serializationMode := flag.String("m", ManDaravardiSerializationMode, "Serialization mode")
@@ -57,19 +63,19 @@ func main() {
 	//loadUserStorageFromFile(*serializationMode)
 
 
-	var userReadFileStore userReadStore
+	//var userReadFileStore userReadStore
+	//
+	//var userReadStore = fileStore{
+	//	filePath:  "./store/data.txt",
+	//}
+	//
+	//userReadFileStore = userReadStore()
 
-	var userReadStore = fileStore{
-		filePath:  "./store/data.txt",
-	}
+	loadUserFromStorage(userFileStore, *serializeMode)
 
-	userReadFileStore = userReadStore()
+	fmt.Println("Hello to TODO app")
 
-	loadUserFromStorage(userReadFileStore, *serializationMode)
-
-	fmt.Println("Hello to TODP app")
-
-	switch *serializationMode {
+	switch *serializeMode {
 	case ManDaravardiSerializationMode:
 		serializationMode = ManDaravardiSerializationMode
 	default:
@@ -93,12 +99,7 @@ func runCommand(command string) {
 
 		if authenticatedUser == nil
 		}
-		var store userStore
-		var userFileToStore = fileStore {
-			filePath: "./store/user.txt",
-		}
 
-		store = userFileStore
 
 		switch command {
 		case "create-task":
@@ -106,7 +107,7 @@ func runCommand(command string) {
 		case "create-category":
 			createCategory()
 		case "register-user":
-			registerUser(store)
+			registerUser(userFileStore)
 		case "list-task":
 			listTask()
 		case "login":
@@ -281,26 +282,83 @@ func loadUserFromStorage(store userReadStore) {
 
 }
 
-func writeUserToFile(user User) {
+func (f fileStore) writeUserToFile(user User) {
 	var file *os.File
 
-	file, err := os.OpenFile(userStoragePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(f.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("cant create or open file", err)
+
+		return
 	}
+	defer file.Close()
+
+	var data []byte
+	// serialize the user struct/object
+	if serializationMode == ManDaravardiSerializationMode {
+		data = []byte(fmt.Sprintf("id: #{user.ID}, name: #{user.Name}, email: #{user.Email}, password: #{user.Password})\n"),)
+	} else if serializationMode == JsonSerializationMode {
+		//json
+
+		var jErr error
+		data, jErr = json.Marshal(user)
+		if jErr != nil {
+			fmt.Println("can't marshal user struct to json", jErr)
+
+			return
+		}
+		data = append(data, []byte("\n")...)
+	} else {
+		fmt.Println("invaild serialization mode")
+
+		return
+	}
+
+	numberOfWrittenBytes, wErr := fil.Write(data)
+	if wErr != nil {
+		fmt.Printf("can't write to the file #{wErr}\n")
+
+		return
+	}
+
+	fmt.Println("numberOfWrittenBytes", numberOfWrittenBytes)
+}
+
+func deserilizeFromManDaravardi(userStr string) (User, error) {
+	if userStr == "" : User{}, errors.New("user string is empty")
+
+	var user = User{}
+
+	userFields := strings.Split(userStr, ",")
+	for _, userField := range userFields {
+		values := strings.Split(field, ":")
+		if len(values) != 2 {
+			fmt.Println("field is not valid, skipping...", len(values))
+
+			continue
+		}
+	}
+	return user,nil
+
+}
+
+func hashThePassword(password string) string {
+	hash := md5.Sum([]byte(password))
+
+	return hex.EncodeToString(hash[:])
 }
 type fileStore struct {
 	filePath string
 }
 
 func (f fileStore) Save(u User) {
-	writeUserToFile(u)
+	f.writeUserToFile(u)
 }
 
 func (f fileStore) Load(serializationMode string) []User {
 	var uStore []User
 
-	file, err := os.Open(userStoragePath)
+	file, err := os.Open(f.filePath)
 	if err != nil {
 		fmt.Println("can't open the file", err)
 	}
