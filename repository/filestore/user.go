@@ -18,11 +18,13 @@ type FileStore struct {
 }
 
 // constructor
-func New(path, serializationMode string) FileStore {
-	return FileStore{filePath: path, serializationMode: serializationMode}
+func New(path, serializationMode string) *FileStore {
+	return &FileStore{
+		filePath:          path,
+		serializationMode: serializationMode}
 }
 
-func (f FileStore) Save(u entity.User) {
+func (f *FileStore) Save(u entity.User) {
 	f.writeUserToFile(u)
 }
 
@@ -33,7 +35,7 @@ func (f FileStore) Save(u entity.User) {
 //
 //}
 
-func (f FileStore) Load() []entity.User {
+func (f *FileStore) Load() []entity.User {
 	var uStore []entity.User
 
 	file, err := os.Open(f.filePath)
